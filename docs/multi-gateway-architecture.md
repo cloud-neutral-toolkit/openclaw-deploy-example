@@ -131,6 +131,64 @@ Nodes should share memory and artifacts, but not the entire runtime state direct
 - logs
 - hot session caches
 
+## TXT Arch Overview
+
+```txt
+[Clients]
+- macOS client
+- iOS client
+- other remote clients
+
+[Global Control Plane]
+- Kong API Gateway
+- auth / JWT / rate limits / presigned URL
+- unified remote entrypoint at openclaw.svc.plus
+- provider proxy entrypoint such as llm.openclaw.svc.plus
+
+[OpenClaw Gateway Nodes]
+- Local macOS gateway:
+  best-latency node for browser sessions, login state, and interactive work
+- VPS gateway:
+  default 24x7 remote execution node
+- Cloud Run gateway:
+  burst / failover remote node for non-interactive work
+- each gateway keeps its own openclaw.json and its own hot runtime state
+- gateways do not share OPENCLAW_STATE_DIR directly
+
+[Shared Memory Plane]
+- MemOS is the canonical long-term memory system across gateways
+- all gateways share the same memory identity model by user_id and memory policy
+- MemOS-Cloud-OpenClaw-Plugin is installed on each gateway node
+- before_agent_start -> plugin recalls memory from MemOS (/search/memory)
+- agent_end -> plugin writes the latest conversation turn back to MemOS (/add/message)
+- this is the planned mechanism for multi-OpenClaw multi-gateway memory sync
+
+[Shared Artifact Plane]
+- GCS / S3 / OSS stores attachments, exports, snapshots, and recovery payloads
+- object storage may be accessed through direct URLs or Kong-issued presigned URLs
+- object storage is not the semantic memory engine
+
+[Traffic and Execution Flow]
+1. Client prefers openclaw-local.svc.plus when reachable.
+2. If local is unavailable, client falls back to openclaw.svc.plus.
+3. Kong authenticates the request and routes to VPS by default.
+4. Kong shifts traffic to Cloud Run only for failover or burst.
+5. The selected gateway recalls memory from MemOS before execution.
+6. The selected gateway writes new memory back to MemOS after execution.
+7. Large artifacts are written to object storage, not to shared hot state.
+
+[Design Rule]
+- sync memory through MemOS
+- sync artifacts through object storage
+- keep execution state local to each gateway
+- do not turn multi-gateway OpenClaw into a shared full-state multi-writer system
+```
+
+## Planned Feature Direction
+
+1. Solve multi-OpenClaw multi-gateway memory synchronization by introducing one shared memory plane instead of replicating each node's full `OPENCLAW_STATE_DIR`, session cache, browser state, or `openclaw.json`.
+2. Integrate [MemOS](https://github.com/cloud-neutral-toolkit/MemOS) plus [MemOS-Cloud-OpenClaw-Plugin](https://github.com/cloud-neutral-toolkit/MemOS-Cloud-OpenClaw-Plugin) so every gateway can recall memory before execution and append new memory after execution through the same lifecycle contract.
+
 ## Recommended Storage Layout
 
 ### Local macOS Gateway
