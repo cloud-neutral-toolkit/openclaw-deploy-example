@@ -124,12 +124,17 @@ Nodes should share memory and artifacts, but not the entire runtime state direct
 ### Node-private
 
 - full `OPENCLAW_STATE_DIR`
+- workspace working tree and `.git` metadata
 - browser profiles
 - credentials
 - lock files
 - temporary files
 - logs
 - hot session caches
+
+OpenClaw workspace should be treated as node-local or task-local state. If the workspace is Git-managed, multiple active gateways must not mount or write to the same live workspace because `.git` refs, index files, locks, and working tree mutations are not safe to share across concurrent nodes.
+
+Multiple gateways may still synchronize workspace changes through Git's distributed model. In other words: workspaces can be synchronized and merged through Git, but multiple gateways must not share the same live Git working tree.
 
 ## TXT Arch Overview
 
@@ -179,6 +184,7 @@ Nodes should share memory and artifacts, but not the entire runtime state direct
 
 [Design Rule]
 - sync memory through MemOS
+- sync workspace changes through Git fetch/push/merge, not through a shared live repo mount
 - sync artifacts through object storage
 - keep execution state local to each gateway
 - do not turn multi-gateway OpenClaw into a shared full-state multi-writer system
@@ -195,17 +201,20 @@ Nodes should share memory and artifacts, but not the entire runtime state direct
 
 - `OPENCLAW_CONFIG_PATH=$HOME/.openclaw/openclaw-local.json`
 - `OPENCLAW_STATE_DIR=$HOME/.openclaw/local-state`
+- workspace path: `$HOME/.openclaw/local-state/workspace`
 - optional shared mount: `/opt/data` for shared memory import or export, snapshots, and recovery workflows
 
 ### VPS Remote Gateway
 
 - `OPENCLAW_CONFIG_PATH=/data/config/openclaw-remote.json`
 - `OPENCLAW_STATE_DIR=/data/remote-state`
+- workspace path: `/data/workspace`
 
 ### Cloud Run Gateway
 
 - `OPENCLAW_CONFIG_PATH=/data/config/openclaw-cloud-run.json`
 - `OPENCLAW_STATE_DIR=/data/cloudrun-state`
+- workspace path: `/data/workspace`
 
 ### Shared object storage
 
@@ -219,6 +228,34 @@ Use GCS/S3/OSS for shared memory and artifacts only:
 Prefer append-only or shard-based writes over direct multi-node overwrites of a single `data.json`.
 
 For macOS specifically, keep the live local gateway on local disk first and merge memory artifacts into shared storage on a schedule or at explicit sync points. Keep `scripts/macos_mount_gcs_openclaw.sh` as an optional mount path for `/opt/data`, but do not treat it as the default live state path for `openclaw-local.svc.plus`.
+
+## Recommended Git Sync Flow
+
+Use Git to synchronize code and workspace outputs across gateways, but only at task boundaries.
+
+### Core rule
+
+- each gateway owns its own local repo and working tree
+- gateways exchange changes through Git commits, branches, patches, or bundles
+- gateways do not co-mount or co-edit the same live workspace directory
+
+### Recommended baseline
+
+1. Keep one upstream Git remote or one central bare repo as the exchange point.
+2. Let each gateway clone or initialize its own local workspace repo.
+3. Start each task on a dedicated branch such as `gateway/local/<task-id>`, `gateway/vps/<task-id>`, or `gateway/cloudrun/<task-id>`.
+4. During task execution, commit locally as needed without trying to sync the live working tree mid-run.
+5. When the task completes, push the branch or export a patch or bundle to the exchange point.
+6. Other gateways fetch the new branch and merge, rebase, or cherry-pick it into their own local repo when they are ready.
+7. Resolve conflicts only at those synchronization boundaries rather than by sharing one mutable workspace.
+
+### Why this split is correct
+
+- `MemOS` handles semantic memory recall and write-back
+- `Git` handles code and workspace history
+- object storage handles large files, attachments, snapshots, and exports
+
+Those three planes solve different problems and should stay separate.
 
 ## Execution Policy
 
