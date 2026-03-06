@@ -199,7 +199,7 @@
     "bind": "lan",
     "controlUi": {
       "allowedOrigins": [
-        "https://openclaw.svc.plus"
+        "https://openclaw-remote.svc.plus"
       ],
       "allowInsecureAuth": true,
       "dangerouslyDisableDeviceAuth": true

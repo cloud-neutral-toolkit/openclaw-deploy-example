@@ -16,13 +16,16 @@ This runbook documents a minimal change deployment baseline for two targets:
 
 It also captures the branch rebuild summary and the exact configuration contract used by `openclawbot-svc-plus`.
 
+For a multi-gateway deployment that keeps node configs independent while sharing memory and centralizing remote ingress in Kong, see [OpenClaw Multi-Gateway Architecture](multi-gateway-architecture.md).
+For a Kong route and upstream sample, see [Kong Routing Draft](kong-routing.md).
+
 ## Scope and Targets
 
 - Service name: `openclawbot-svc-plus`
 - Region: `asia-northeast1`
 - Bucket name: `openclawbot-data`
 - State mount path: `/data`
-- Config path: `/data/openclaw.json`
+- Shared memory path: `/data/memory`
 - Required secrets:
   - `internal-service-token` for `OPENCLAW_GATEWAY_TOKEN`
   - `zai-api-key` for `Z_AI_API_KEY`

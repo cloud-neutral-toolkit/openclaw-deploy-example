@@ -20,7 +20,7 @@ LOG_FILE="${HOME}/Library/Logs/openclaw/gcs-rclone-mount.log"
 
 usage() {
   cat <<'EOF'
-Mount a GCS bucket on macOS for local OpenClaw state storage (rclone-only).
+Mount a GCS bucket on macOS for shared memory sync, recovery, or optional OpenClaw state storage (rclone-only).
 
 Usage:
   scripts/macos_mount_gcs_openclaw.sh [up|down|restart|ensure|status|launchctl] [options]
@@ -40,7 +40,7 @@ Options:
   --mount-point <path>       Local mount point (default: /opt/data)
   --cache-dir <path>         rclone cache dir (default: ~/.openclaw/cache/rclone-vfs)
   --vfs-cache-mode <mode>    rclone vfs cache mode (default: full)
-  --env-file <path>          Update OPENCLAW_STATE_DIR in this env file
+  --env-file <path>          Optionally update OPENCLAW_STATE_DIR in this env file
   --force-remount            Unmount first if already mounted
   --install-launchd          Install/start a launchd service (KeepAlive + RunAtLoad)
   --launchctl-mode <mode>    launchctl mode: install|start|stop|restart|uninstall|status|print

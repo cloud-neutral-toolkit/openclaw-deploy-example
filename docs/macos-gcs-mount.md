@@ -1,6 +1,12 @@
 # macOS 本机 GCS 挂载（OpenClaw / rclone）
 
-本文档仅保留 `rclone` 路线：在 macOS 将 GCS 存储桶挂载到本地目录，并映射 `OPENCLAW_STATE_DIR`。
+本文档仅保留 `rclone` 路线：在 macOS 将 GCS 存储桶挂载到本地目录，用于共享记忆、产物、快照和恢复流程；如有需要，也可以临时映射 `OPENCLAW_STATE_DIR`。
+
+默认建议：
+
+- `openclaw-local.svc.plus` 的热状态优先保留在本地磁盘
+- `/opt/data` 保留为共享记忆挂载点和恢复入口
+- 不要默认让本地 gateway 持续依赖 `/opt/data`
 
 ## 架构
 
@@ -70,8 +76,7 @@ chmod +x scripts/macos_mount_gcs_openclaw.sh
 export GCS_BUCKET_NAME=openclawbot-data
 ./scripts/macos_mount_gcs_openclaw.sh up \
   --remote openclaw-gcs \
-  --mount-point /opt/data \
-  --env-file .env
+  --mount-point /opt/data
 ```
 
 也可以不导出环境变量，直接通过参数传入：
@@ -87,7 +92,18 @@ export GCS_BUCKET_NAME=openclawbot-data
 
 - 脚本默认启用可写缓存：`--vfs-cache-mode full`
 - 默认 cache 目录：`~/.openclaw/cache/rclone-vfs`
-- `--env-file` 会自动写入或更新：
+- 只有在你明确要让本地 OpenClaw 暂时使用挂载盘作为 `OPENCLAW_STATE_DIR` 时，才需要 `--env-file`
+
+可选绑定示例：
+
+```bash
+./scripts/macos_mount_gcs_openclaw.sh up \
+  --remote openclaw-gcs \
+  --mount-point /opt/data \
+  --env-file .env
+```
+
+这会自动写入或更新：
 
 ```bash
 OPENCLAW_STATE_DIR=/opt/data
@@ -112,13 +128,16 @@ OPENCLAW_STATE_DIR=/opt/data
 
 需要长期后台运行与异常自愈时，使用 launchd：
 
+如果你的目标只是保留共享记忆挂载，而不是让 local gateway 长期把热状态放在 `/opt/data`，则不要传 `--env-file`。
+
 ```bash
 ./scripts/macos_mount_gcs_openclaw.sh up \
   --remote openclaw-gcs \
   --mount-point /opt/data \
-  --env-file .env \
   --install-launchd
 ```
+
+如果你明确要让本地 OpenClaw 在该阶段使用挂载盘作为 `OPENCLAW_STATE_DIR`，再追加 `--env-file .env`。
 
 状态检查：
 

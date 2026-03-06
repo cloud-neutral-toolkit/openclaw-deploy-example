@@ -3,13 +3,17 @@
 This guide covers how to deploy OpenClaw in a "Gateway Only" configuration on Cloud Run, optimized for low overhead and using Zhipu AI (ZAI/GLM) as the primary provider.
 
 For the full production runbook including single host Caddy plus Docker plus GCS operations, see [OpenClaw Deployment Runbook](/runbook-cloud-run).
+For the multi-gateway layout with Kong as the unified remote entrypoint and independent node configs, see [OpenClaw Multi-Gateway Architecture](multi-gateway-architecture.md).
 
 ## Architecture
 
 - **Cloud Run**: Runs the OpenClaw Gateway container.
-- **Cloud Storage (GCS)**: Mounted as a volume at `/data` for persistent `openclaw.json` and state.
+- **Cloud Storage (GCS)**: Mounted as a volume at `/data` for node-local Cloud Run state and shared memory artifacts.
 - **Secret Manager**: Securely stores `OPENCLAW_GATEWAY_TOKEN` and `ZAI_API_KEY`.
 - **Cloud Build**: Automates building and deploying the container.
+- **Kong**: Stays in front of remote gateways as the centralized auth, routing, and AI API governance layer.
+
+Cloud Run is recommended only for non-interactive online work, overflow, and failover. Strong interactive browser tasks should stay on the local macOS gateway.
 
 ## Prerequisites
 

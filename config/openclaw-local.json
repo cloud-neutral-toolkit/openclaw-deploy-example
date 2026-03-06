@@ -38,7 +38,7 @@
         "openai-codex/gpt-5.3-codex-spark": {},
         "openai/gpt-4": {}
       },
-      "workspace": "/opt/data/workspace",
+      "workspace": "/Users/local-user/.openclaw/local-state/workspace",
       "compaction": {
         "mode": "safeguard"
       },
@@ -80,6 +80,11 @@
     "port": 18789,
     "mode": "local",
     "bind": "loopback",
+    "controlUi": {
+      "allowedOrigins": [
+        "https://openclaw-local.svc.plus"
+      ]
+    },
     "auth": {
       "mode": "token"
     },

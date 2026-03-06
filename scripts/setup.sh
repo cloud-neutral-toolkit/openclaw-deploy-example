@@ -40,7 +40,7 @@ Examples:
   # macOS local apply
   curl -fsSL https://raw.githubusercontent.com/cloud-neutral-toolkit/openclawbot.svc.plus/main/scripts/setup.sh \
     | bash -s -- --mode macos-local --domain openclaw-local.svc.plus \
-      --state-dir /opt/data --config-path /opt/data/openclaw-local.json
+      --state-dir "$HOME/.openclaw/local-state" --config-path "$HOME/.openclaw/openclaw-local.json"
 
 Options:
   -v, --version <value>                  Version argument (default: latest)
@@ -50,8 +50,8 @@ Options:
   --dry-run                              Print actions only
 
   --bucket <name>                        GCS bucket (default: openclawbot-data)
-  --state-dir <path>                     State dir mount path (mode default: vps/cloud-run=/data, macos-local=/opt/data)
-  --config-path <path>                   Config path (mode default: vps=/data/openclaw-vps.json, cloud-run=/data/openclaw-cloud-run.json, macos-local=/opt/data/openclaw-local.json)
+  --state-dir <path>                     State dir mount path (mode default: vps/cloud-run=/data, macos-local=$HOME/.openclaw/local-state)
+  --config-path <path>                   Config path (mode default: vps=/data/openclaw-vps.json, cloud-run=/data/openclaw-cloud-run.json, macos-local=$HOME/.openclaw/openclaw-local.json)
   --control-ui-origin <origin>           Allowed origin (single-host default: https://<domain>, cloud-run default: *)
   --env-file <path>                      Env file path (default: /root/.env for vps, ~/.openclaw/.env for macos-local)
 
@@ -849,10 +849,10 @@ apply_mode_defaults() {
         DOMAIN="openclaw-local.svc.plus"
       fi
       if ((STATE_DIR_SET_BY_FLAG == 0)); then
-        STATE_DIR="/opt/data"
+        STATE_DIR="${HOME}/.openclaw/local-state"
       fi
       if ((CONFIG_PATH_SET_BY_FLAG == 0)); then
-        CONFIG_PATH="/opt/data/openclaw-local.json"
+        CONFIG_PATH="${HOME}/.openclaw/openclaw-local.json"
       fi
       if ((ENV_FILE_SET_BY_FLAG == 0)); then
         ENV_FILE="${HOME}/.openclaw/.env"
