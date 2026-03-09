@@ -7,6 +7,7 @@ External model names should be gateway aliases, not raw provider names.
 Current aliases:
 
 - `glm-5:cloud`
+- `glm-5:nvidia`
 - `kimi-k2.5:cloud`
 - `minimax-m2.5:cloud`
 - `chat-default:cloud`
@@ -16,7 +17,8 @@ Current aliases:
 
 | External alias | Endpoint | Gateway plugin | Upstream model source |
 | :------------- | :------- | :------------- | :-------------------- |
-| `glm-5:cloud` | `/v1/chat/completions` | `ai-proxy` | `GLM_CHAT_MODEL` |
+| `glm-5:cloud` | `/v1/chat/completions` | `ai-proxy` | `OLLAMA_CHAT_MODEL` |
+| `glm-5:nvidia` | `/v1/chat/completions` | `ai-proxy` | `NVIDIA_CHAT_MODEL` |
 | `kimi-k2.5:cloud` | `/v1/chat/completions` | `ai-proxy` | `KIMI_CHAT_MODEL` |
 | `minimax-m2.5:cloud` | `/v1/chat/completions` | `ai-proxy` | `MINIMAX_CHAT_MODEL` |
 | `chat-default:cloud` | `/v1/chat/completions` | `ai-proxy-multi` | ordered fallback chain |

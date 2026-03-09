@@ -11,7 +11,8 @@
 
 | Alias group | Required env |
 | :---------- | :----------- |
-| GLM chat | `GLM_API_KEY`, `GLM_CHAT_ENDPOINT`, `GLM_CHAT_MODEL` |
+| Ollama Cloud GLM chat | `OLLAMA_API_KEY`, `OLLAMA_CHAT_ENDPOINT`, `OLLAMA_CHAT_MODEL` |
+| NVIDIA Cloud GLM chat | `NVIDIA_API_KEY`, `NVIDIA_CHAT_ENDPOINT`, `NVIDIA_CHAT_MODEL` |
 | Kimi chat | `KIMI_API_KEY`, `KIMI_CHAT_ENDPOINT`, `KIMI_CHAT_MODEL` |
 | MiniMax chat | `MINIMAX_API_KEY`, `MINIMAX_CHAT_ENDPOINT`, `MINIMAX_CHAT_MODEL` |
 | Embeddings | `EMBEDDINGS_API_KEY`, `EMBEDDINGS_ENDPOINT`, `EMBEDDINGS_MODEL` |
@@ -20,7 +21,7 @@
 
 `chat-default:cloud` uses `ai-proxy-multi` with this order:
 
-1. GLM
+1. Ollama Cloud (`glm-5:cloud`)
 2. Kimi
 3. MiniMax
 

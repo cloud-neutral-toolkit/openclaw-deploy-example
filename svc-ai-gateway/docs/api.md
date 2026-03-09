@@ -40,6 +40,7 @@
 ## Supported chat aliases
 
 - `glm-5:cloud`
+- `glm-5:nvidia`
 - `kimi-k2.5:cloud`
 - `minimax-m2.5:cloud`
 - `chat-default:cloud`
