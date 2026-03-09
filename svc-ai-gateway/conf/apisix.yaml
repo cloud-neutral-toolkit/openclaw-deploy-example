@@ -1,3 +1,9 @@
+consumers:
+  - username: ai-gateway-client
+    plugins:
+      key-auth:
+        key: "Bearer ${{AI_GATEWAY_ACCESS_TOKEN:=replace-me}}"
+
 routes:
   - id: chat-glm-5-cloud
     name: chat-glm-5-cloud
@@ -12,6 +18,9 @@ routes:
         - ==
         - glm-5:cloud
     plugins:
+      key-auth:
+        header: Authorization
+        hide_credentials: true
       ai-proxy:
         provider: openai-compatible
         auth:
@@ -41,6 +50,9 @@ routes:
         - ==
         - kimi-k2.5:cloud
     plugins:
+      key-auth:
+        header: Authorization
+        hide_credentials: true
       ai-proxy:
         provider: openai-compatible
         auth:
@@ -70,6 +82,9 @@ routes:
         - ==
         - minimax-m2.5:cloud
     plugins:
+      key-auth:
+        header: Authorization
+        hide_credentials: true
       ai-proxy:
         provider: openai-compatible
         auth:
@@ -99,6 +114,9 @@ routes:
         - ==
         - chat-default:cloud
     plugins:
+      key-auth:
+        header: Authorization
+        hide_credentials: true
       ai-proxy-multi:
         fallback_strategy:
           - http_429
@@ -154,6 +172,9 @@ routes:
     methods:
       - POST
     plugins:
+      key-auth:
+        header: Authorization
+        hide_credentials: true
       serverless-pre-function:
         phase: access
         functions:
@@ -187,6 +208,9 @@ routes:
         - ==
         - text-embedding-3-small:cloud
     plugins:
+      key-auth:
+        header: Authorization
+        hide_credentials: true
       ai-proxy:
         provider: openai-compatible
         auth:
@@ -212,6 +236,9 @@ routes:
     methods:
       - POST
     plugins:
+      key-auth:
+        header: Authorization
+        hide_credentials: true
       serverless-pre-function:
         phase: access
         functions:
@@ -241,6 +268,9 @@ routes:
     methods:
       - GET
     plugins:
+      key-auth:
+        header: Authorization
+        hide_credentials: true
       serverless-pre-function:
         phase: access
         functions:

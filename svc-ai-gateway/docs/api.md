@@ -6,6 +6,12 @@
 
 - Base URL: `https://api.svc.plus`
 
+## Authentication
+
+- All public endpoints require `Authorization: Bearer <AI_GATEWAY_ACCESS_TOKEN>`.
+- TLS terminates at Caddy.
+- APISIX enforces gateway auth and strips the client credential before proxying upstream.
+
 ## Endpoints
 
 - `POST /v1/chat/completions`
@@ -20,6 +26,7 @@
 - no dashboard
 - config stored in Git under `conf/`
 - Caddy runs on the host as the public TLS entrypoint and reverse proxies to `127.0.0.1:9080`
+- APISIX validates `Authorization` with `key-auth` and then routes to the configured provider
 
 ## Current route model
 
@@ -44,6 +51,13 @@
 ## Important limitation
 
 This YAML-only version maps aliases to providers by APISIX route matching on request-body fields. It works for a fixed alias catalog, but it is not yet a full dynamic model registry. If you want arbitrary aliases loaded from a database or dynamic policy engine, add a thin adapter service or a custom APISIX plugin later.
+
+## Example
+
+```bash
+curl https://api.svc.plus/v1/models \
+  -H "Authorization: Bearer ${AI_GATEWAY_ACCESS_TOKEN}"
+```
 
 ## Run
 
