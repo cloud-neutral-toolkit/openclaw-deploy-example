@@ -7,8 +7,8 @@ External model names should match the upstream model names exposed to clients.
 Current models:
 
 - `z-ai/glm5`
-- `kimi-k2.5:cloud`
-- `minimax-m2.5:cloud`
+- `moonshotai/kimi-k2.5`
+- `minimaxai/minimax-m2.5`
 - `text-embedding-3-small`
 
 ## Model mapping
@@ -16,8 +16,8 @@ Current models:
 | Public model | Endpoint | Gateway plugin | Upstream model source |
 | :----------- | :------- | :------------- | :-------------------- |
 | `z-ai/glm5` | `/v1/chat/completions` | `ai-proxy-multi` | `OLLAMA_CHAT_MODEL` (`glm-5:cloud`) and `NVIDIA_CHAT_MODEL` (`z-ai/glm5`) |
-| `kimi-k2.5:cloud` | `/v1/chat/completions` | `ai-proxy` | `KIMI_CHAT_MODEL` |
-| `minimax-m2.5:cloud` | `/v1/chat/completions` | `ai-proxy` | `MINIMAX_CHAT_MODEL` |
+| `moonshotai/kimi-k2.5` | `/v1/chat/completions` | `ai-proxy` | `OLLAMA_KIMI_MODEL` (`kimi-k2.5:cloud`) |
+| `minimaxai/minimax-m2.5` | `/v1/chat/completions` | `ai-proxy` | `OLLAMA_MINIMAX_MODEL` (`minimax-m2.5:cloud`) |
 | `text-embedding-3-small` | `/v1/embeddings` | `ai-proxy` | `EMBEDDINGS_MODEL` |
 
 ## Why expose upstream names directly

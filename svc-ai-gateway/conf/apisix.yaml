@@ -56,8 +56,8 @@ routes:
       nodes:
         "127.0.0.1:1": 1
 
-  - id: chat-kimi-k2-5-cloud
-    name: chat-kimi-k2-5-cloud
+  - id: chat-moonshotai-kimi-k2-5
+    name: chat-moonshotai-kimi-k2-5
     priority: 100
     hosts:
       - "${{API_PUBLIC_HOST:=api.svc.plus}}"
@@ -67,7 +67,7 @@ routes:
     vars:
       - - post_arg.model
         - ==
-        - kimi-k2.5:cloud
+        - moonshotai/kimi-k2.5
     plugins:
       key-auth:
         header: Authorization
@@ -76,11 +76,11 @@ routes:
         provider: openai-compatible
         auth:
           header:
-            Authorization: "Bearer ${{KIMI_API_KEY}}"
+            Authorization: "Bearer ${{OLLAMA_API_KEY}}"
         options:
-          model: "${{KIMI_CHAT_MODEL:=kimi-k2.5:cloud}}"
+          model: "${{OLLAMA_KIMI_MODEL:=kimi-k2.5:cloud}}"
         override:
-          endpoint: "${{KIMI_CHAT_ENDPOINT}}"
+          endpoint: "${{OLLAMA_CHAT_ENDPOINT}}"
         logging:
           summaries: true
     upstream:
@@ -88,8 +88,8 @@ routes:
       nodes:
         "127.0.0.1:1": 1
 
-  - id: chat-minimax-m2-5-cloud
-    name: chat-minimax-m2-5-cloud
+  - id: chat-minimaxai-minimax-m2-5
+    name: chat-minimaxai-minimax-m2-5
     priority: 100
     hosts:
       - "${{API_PUBLIC_HOST:=api.svc.plus}}"
@@ -99,7 +99,7 @@ routes:
     vars:
       - - post_arg.model
         - ==
-        - minimax-m2.5:cloud
+        - minimaxai/minimax-m2.5
     plugins:
       key-auth:
         header: Authorization
@@ -108,11 +108,11 @@ routes:
         provider: openai-compatible
         auth:
           header:
-            Authorization: "Bearer ${{MINIMAX_API_KEY}}"
+            Authorization: "Bearer ${{OLLAMA_API_KEY}}"
         options:
-          model: "${{MINIMAX_CHAT_MODEL:=minimax-m2.5:cloud}}"
+          model: "${{OLLAMA_MINIMAX_MODEL:=minimax-m2.5:cloud}}"
         override:
-          endpoint: "${{MINIMAX_CHAT_ENDPOINT}}"
+          endpoint: "${{OLLAMA_CHAT_ENDPOINT}}"
         logging:
           summaries: true
     upstream:
@@ -140,7 +140,7 @@ routes:
               local core = require("apisix.core")
               return core.response.exit(400, {
                 error = {
-                  message = "Unsupported chat model. Use z-ai/glm5, kimi-k2.5:cloud, or minimax-m2.5:cloud.",
+                  message = "Unsupported chat model. Use z-ai/glm5, moonshotai/kimi-k2.5, or minimaxai/minimax-m2.5.",
                   type = "invalid_request_error",
                   param = "model",
                   code = "model_not_found"
@@ -244,16 +244,16 @@ routes:
                     root = "z-ai/glm5"
                   },
                   {
-                    id = "kimi-k2.5:cloud",
+                    id = "moonshotai/kimi-k2.5",
                     object = "model",
                     owned_by = "svc-ai-gateway",
-                    root = "kimi-k2.5:cloud"
+                    root = "moonshotai/kimi-k2.5"
                   },
                   {
-                    id = "minimax-m2.5:cloud",
+                    id = "minimaxai/minimax-m2.5",
                     object = "model",
                     owned_by = "svc-ai-gateway",
-                    root = "minimax-m2.5:cloud"
+                    root = "minimaxai/minimax-m2.5"
                   },
                   {
                     id = "text-embedding-3-small",

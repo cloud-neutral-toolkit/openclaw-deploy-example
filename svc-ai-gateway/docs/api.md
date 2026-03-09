@@ -40,8 +40,8 @@
 ## Supported chat models
 
 - `z-ai/glm5`
-- `kimi-k2.5:cloud`
-- `minimax-m2.5:cloud`
+- `moonshotai/kimi-k2.5`
+- `minimaxai/minimax-m2.5`
 
 ## Supported embedding models
 
