@@ -42,6 +42,7 @@ This repository keeps only placeholder values in `.env`.
 
 For production:
 
+- keep real `AI_GATEWAY_ACCESS_TOKEN`, `OLLAMA_API_KEY`, and `NVIDIA_API_KEY` in the repository root `.env` or your secret manager
 - render `.env` from your secret manager
 - reload APISIX after rotating credentials
 - keep provider credentials out of client-side configs
