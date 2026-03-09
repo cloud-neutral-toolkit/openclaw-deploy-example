@@ -37,21 +37,19 @@
 - `GET /v1/models`
   Returns a static gateway-maintained model catalog.
 
-## Supported chat aliases
+## Supported chat models
 
-- `glm-5:cloud`
-- `glm-5:nvidia`
+- `z-ai/glm5`
 - `kimi-k2.5:cloud`
 - `minimax-m2.5:cloud`
-- `chat-default:cloud`
 
-## Supported embedding aliases
+## Supported embedding models
 
-- `text-embedding-3-small:cloud`
+- `text-embedding-3-small`
 
 ## Important limitation
 
-This YAML-only version maps aliases to providers by APISIX route matching on request-body fields. It works for a fixed alias catalog, but it is not yet a full dynamic model registry. If you want arbitrary aliases loaded from a database or dynamic policy engine, add a thin adapter service or a custom APISIX plugin later.
+This YAML-only version maps public model names to providers by APISIX route matching on request-body fields. It works for a fixed model catalog, but it is not yet a full dynamic model registry. If you want arbitrary models loaded from a database or dynamic policy engine, add a thin adapter service or a custom APISIX plugin later.
 
 ## Example
 

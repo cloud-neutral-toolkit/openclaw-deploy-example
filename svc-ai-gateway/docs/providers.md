@@ -3,14 +3,14 @@
 ## Plugin choice
 
 - `ai-proxy`
-  Use for one fixed upstream provider per alias.
+  Use for one fixed upstream provider per public model.
 - `ai-proxy-multi`
   Use for ordered fallback, retries, and multi-provider policy.
 
 ## Current upstream env contract
 
-| Alias group | Required env |
-| :---------- | :----------- |
+| Public model group | Required env |
+| :----------------- | :----------- |
 | Ollama Cloud GLM chat | `OLLAMA_API_KEY`, `OLLAMA_CHAT_ENDPOINT`, `OLLAMA_CHAT_MODEL` |
 | NVIDIA Cloud GLM chat | `NVIDIA_API_KEY`, `NVIDIA_CHAT_ENDPOINT`, `NVIDIA_CHAT_MODEL` |
 | Kimi chat | `KIMI_API_KEY`, `KIMI_CHAT_ENDPOINT`, `KIMI_CHAT_MODEL` |
@@ -19,11 +19,16 @@
 
 ## Fallback route
 
-`chat-default:cloud` uses `ai-proxy-multi` with this order:
+`z-ai/glm5` uses `ai-proxy-multi` with this order:
 
 1. Ollama Cloud (`glm-5:cloud`)
-2. Kimi
-3. MiniMax
+2. NVIDIA Cloud (`z-ai/glm5`)
+
+Only the Ollama Cloud provider requires model-name mapping on this route:
+
+- public model: `z-ai/glm5`
+- Ollama upstream model: `glm-5:cloud`
+- NVIDIA upstream model: `z-ai/glm5`
 
 Fallback is triggered on:
 

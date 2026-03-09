@@ -5,8 +5,8 @@ consumers:
         key: "Bearer ${{AI_GATEWAY_ACCESS_TOKEN:=replace-me}}"
 
 routes:
-  - id: chat-glm-5-cloud
-    name: chat-glm-5-cloud
+  - id: chat-z-ai-glm5
+    name: chat-z-ai-glm5
     priority: 100
     hosts:
       - "${{API_PUBLIC_HOST:=api.svc.plus}}"
@@ -16,20 +16,39 @@ routes:
     vars:
       - - post_arg.model
         - ==
-        - glm-5:cloud
+        - z-ai/glm5
     plugins:
       key-auth:
         header: Authorization
         hide_credentials: true
-      ai-proxy:
-        provider: openai-compatible
-        auth:
-          header:
-            Authorization: "Bearer ${{OLLAMA_API_KEY}}"
-        options:
-          model: "${{OLLAMA_CHAT_MODEL:=glm-5:cloud}}"
-        override:
-          endpoint: "${{OLLAMA_CHAT_ENDPOINT}}"
+      ai-proxy-multi:
+        fallback_strategy:
+          - http_429
+          - http_5xx
+          - rate_limiting
+        instances:
+          - name: ollama-primary
+            provider: openai-compatible
+            weight: 0
+            priority: 30
+            auth:
+              header:
+                Authorization: "Bearer ${{OLLAMA_API_KEY}}"
+            options:
+              model: "${{OLLAMA_CHAT_MODEL:=glm-5:cloud}}"
+            override:
+              endpoint: "${{OLLAMA_CHAT_ENDPOINT}}"
+          - name: nvidia-fallback
+            provider: openai-compatible
+            weight: 0
+            priority: 20
+            auth:
+              header:
+                Authorization: "Bearer ${{NVIDIA_API_KEY}}"
+            options:
+              model: "${{NVIDIA_CHAT_MODEL:=z-ai/glm5}}"
+            override:
+              endpoint: "${{NVIDIA_CHAT_ENDPOINT}}"
         logging:
           summaries: true
     upstream:
@@ -59,41 +78,9 @@ routes:
           header:
             Authorization: "Bearer ${{KIMI_API_KEY}}"
         options:
-          model: "${{KIMI_CHAT_MODEL:=kimi-k2.5}}"
+          model: "${{KIMI_CHAT_MODEL:=kimi-k2.5:cloud}}"
         override:
           endpoint: "${{KIMI_CHAT_ENDPOINT}}"
-        logging:
-          summaries: true
-    upstream:
-      type: roundrobin
-      nodes:
-        "127.0.0.1:1": 1
-
-  - id: chat-glm-5-nvidia
-    name: chat-glm-5-nvidia
-    priority: 100
-    hosts:
-      - "${{API_PUBLIC_HOST:=api.svc.plus}}"
-    uri: /v1/chat/completions
-    methods:
-      - POST
-    vars:
-      - - post_arg.model
-        - ==
-        - glm-5:nvidia
-    plugins:
-      key-auth:
-        header: Authorization
-        hide_credentials: true
-      ai-proxy:
-        provider: openai-compatible
-        auth:
-          header:
-            Authorization: "Bearer ${{NVIDIA_API_KEY}}"
-        options:
-          model: "${{NVIDIA_CHAT_MODEL:=z-ai/glm5}}"
-        override:
-          endpoint: "${{NVIDIA_CHAT_ENDPOINT}}"
         logging:
           summaries: true
     upstream:
@@ -123,71 +110,9 @@ routes:
           header:
             Authorization: "Bearer ${{MINIMAX_API_KEY}}"
         options:
-          model: "${{MINIMAX_CHAT_MODEL:=minimax-m2.5}}"
+          model: "${{MINIMAX_CHAT_MODEL:=minimax-m2.5:cloud}}"
         override:
           endpoint: "${{MINIMAX_CHAT_ENDPOINT}}"
-        logging:
-          summaries: true
-    upstream:
-      type: roundrobin
-      nodes:
-        "127.0.0.1:1": 1
-
-  - id: chat-default-cloud
-    name: chat-default-cloud
-    priority: 90
-    hosts:
-      - "${{API_PUBLIC_HOST:=api.svc.plus}}"
-    uri: /v1/chat/completions
-    methods:
-      - POST
-    vars:
-      - - post_arg.model
-        - ==
-        - chat-default:cloud
-    plugins:
-      key-auth:
-        header: Authorization
-        hide_credentials: true
-      ai-proxy-multi:
-        fallback_strategy:
-          - http_429
-          - http_5xx
-          - rate_limiting
-        instances:
-          - name: ollama-primary
-            provider: openai-compatible
-            weight: 0
-            priority: 30
-            auth:
-              header:
-                Authorization: "Bearer ${{OLLAMA_API_KEY}}"
-            options:
-              model: "${{OLLAMA_CHAT_MODEL:=glm-5:cloud}}"
-            override:
-              endpoint: "${{OLLAMA_CHAT_ENDPOINT}}"
-          - name: kimi-fallback
-            provider: openai-compatible
-            weight: 0
-            priority: 20
-            auth:
-              header:
-                Authorization: "Bearer ${{KIMI_API_KEY}}"
-            options:
-              model: "${{KIMI_CHAT_MODEL:=kimi-k2.5}}"
-            override:
-              endpoint: "${{KIMI_CHAT_ENDPOINT}}"
-          - name: minimax-fallback
-            provider: openai-compatible
-            weight: 0
-            priority: 10
-            auth:
-              header:
-                Authorization: "Bearer ${{MINIMAX_API_KEY}}"
-            options:
-              model: "${{MINIMAX_CHAT_MODEL:=minimax-m2.5}}"
-            override:
-              endpoint: "${{MINIMAX_CHAT_ENDPOINT}}"
         logging:
           summaries: true
     upstream:
@@ -215,7 +140,7 @@ routes:
               local core = require("apisix.core")
               return core.response.exit(400, {
                 error = {
-                  message = "Unsupported chat model alias. Use glm-5:cloud, glm-5:nvidia, kimi-k2.5:cloud, minimax-m2.5:cloud, or chat-default:cloud.",
+                  message = "Unsupported chat model. Use z-ai/glm5, kimi-k2.5:cloud, or minimax-m2.5:cloud.",
                   type = "invalid_request_error",
                   param = "model",
                   code = "model_not_found"
@@ -227,8 +152,8 @@ routes:
       nodes:
         "127.0.0.1:1": 1
 
-  - id: embeddings-default-cloud
-    name: embeddings-default-cloud
+  - id: embeddings-text-embedding-3-small
+    name: embeddings-text-embedding-3-small
     priority: 100
     hosts:
       - "${{API_PUBLIC_HOST:=api.svc.plus}}"
@@ -238,7 +163,7 @@ routes:
     vars:
       - - post_arg.model
         - ==
-        - text-embedding-3-small:cloud
+        - text-embedding-3-small
     plugins:
       key-auth:
         header: Authorization
@@ -279,7 +204,7 @@ routes:
               local core = require("apisix.core")
               return core.response.exit(400, {
                 error = {
-                  message = "Unsupported embedding model alias. Use text-embedding-3-small:cloud.",
+                  message = "Unsupported embedding model. Use text-embedding-3-small.",
                   type = "invalid_request_error",
                   param = "model",
                   code = "model_not_found"
@@ -313,10 +238,10 @@ routes:
                 object = "list",
                 data = {
                   {
-                    id = "glm-5:cloud",
+                    id = "z-ai/glm5",
                     object = "model",
                     owned_by = "svc-ai-gateway",
-                    root = "glm-5:cloud"
+                    root = "z-ai/glm5"
                   },
                   {
                     id = "kimi-k2.5:cloud",
@@ -325,28 +250,16 @@ routes:
                     root = "kimi-k2.5:cloud"
                   },
                   {
-                    id = "glm-5:nvidia",
-                    object = "model",
-                    owned_by = "svc-ai-gateway",
-                    root = "glm-5:nvidia"
-                  },
-                  {
                     id = "minimax-m2.5:cloud",
                     object = "model",
                     owned_by = "svc-ai-gateway",
                     root = "minimax-m2.5:cloud"
                   },
                   {
-                    id = "chat-default:cloud",
+                    id = "text-embedding-3-small",
                     object = "model",
                     owned_by = "svc-ai-gateway",
-                    root = "chat-default:cloud"
-                  },
-                  {
-                    id = "text-embedding-3-small:cloud",
-                    object = "model",
-                    owned_by = "svc-ai-gateway",
-                    root = "text-embedding-3-small:cloud"
+                    root = "text-embedding-3-small"
                   }
                 }
               }, {
