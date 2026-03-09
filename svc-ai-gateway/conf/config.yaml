@@ -1,0 +1,16 @@
+apisix:
+  node_listen:
+    - 9080
+  enable_admin: false
+  enable_control: false
+  router:
+    http: radixtree_host_uri
+
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+
+nginx_config:
+  http:
+    access_log_format: '{"request_id":"$request_id","route_id":"$route_id","upstream_addr":"$upstream_addr","llm_model":"$request_llm_model","llm_provider":"$llm_instance","llm_latency":"$llm_latency","llm_resp_model":"$llm_resp_model"}'

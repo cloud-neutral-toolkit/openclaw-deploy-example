@@ -1,18 +1,18 @@
 ---
 title: "OpenClaw Deployment Runbook"
-summary: "Branch rebuild summary plus production runbook for Cloud Run plus GCS and single host Caddy plus Docker plus GCS"
+summary: "Branch rebuild summary plus production runbook for Cloud Run plus GCS volume and single host Caddy plus Docker plus JuiceFS"
 read_when:
   - You need a clean deployment baseline for openclawbot-svc-plus
   - You are choosing between Cloud Run on demand and a 7x24 single host deployment
-  - You need a verification and rollback checklist for Caddy plus Docker plus GCS
+  - You need a verification and rollback checklist for Caddy plus Docker plus JuiceFS
 ---
 
 # OpenClaw Deployment Runbook
 
 This runbook documents a minimal change deployment baseline for two targets:
 
-- Cloud Run + GCS (on demand scaling)
-- Single host Caddy + Docker + GCS (7x24 runtime)
+- Cloud Run + GCS volume (on demand scaling)
+- Single host Caddy + Docker + JuiceFS (7x24 runtime)
 
 It also captures the branch rebuild summary and the exact configuration contract used by `openclawbot-svc-plus`.
 
@@ -37,7 +37,7 @@ Branch: `feat/cloud-run-deployment`
 - Kept diff small and focused on deployment and runtime compatibility.
 - Added Cloud Run compatible container flow and deployment wiring.
 - Switched state and config to `OPENCLAW_STATE_DIR` and `OPENCLAW_CONFIG_PATH` instead of hardcoded paths.
-- Added GCS Fuse friendly behavior for permission and lock edge cases.
+- Kept Cloud Run on GCS volume and moved self-hosted shared mounts to JuiceFS.
 - Kept desktop side compatibility updates for multi terminal bundle separation and UI assets.
 
 ## Shared Configuration Contract
@@ -115,7 +115,7 @@ Validation goals:
 - Secret references resolved without permission errors.
 - `/data` mount is readable and writable by the runtime user.
 
-## Path B Single Host Caddy Plus Docker Plus GCS
+## Path B Single Host Caddy Plus Docker Plus JuiceFS
 
 This path is for persistent runtime on a host like `root@1.15.155.245`.
 
@@ -124,23 +124,26 @@ This path is for persistent runtime on a host like `root@1.15.155.245`.
 - Caddy is public ingress on `80` and `443`.
 - OpenClaw container listens on `127.0.0.1:18789`.
 - Caddy reverse proxies to `127.0.0.1:18789`.
-- GCS bucket is mounted to `/data` through `gcsfuse`.
+- JuiceFS is mounted to `/data`.
+- JuiceFS metadata lives in PostgreSQL.
+- GCS remains the object storage backend.
 - Container mounts host `/data` as a volume.
 
-### Step 1 Mount GCS to `/data`
+### Step 1 Mount JuiceFS to `/data`
 
 Example systemd mount service:
 
 ```ini
 [Unit]
-Description=Mount GCS bucket openclawbot-data to /data
+Description=Mount OpenClaw JuiceFS to /data
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/gcsfuse --implicit-dirs --uid 0 --gid 0 --file-mode 0644 --dir-mode 0755 openclawbot-data /data
-ExecStop=/bin/fusermount -u /data
+EnvironmentFile=/root/.env
+ExecStart=/bin/bash -lc 'exec /usr/local/bin/juicefs mount --cache-dir "$JUICEFS_CACHE_DIR" --cache-size "$JUICEFS_CACHE_SIZE" --writeback "$JUICEFS_META_URL" /data'
+ExecStop=/bin/bash -lc 'exec /usr/local/bin/juicefs umount /data || true'
 Restart=always
 RestartSec=5
 
@@ -155,6 +158,14 @@ mount | grep /data
 ls -la /data
 test -f /data/openclaw.json
 ```
+
+Required env in `/root/.env`:
+
+- `JUICEFS_META_URL=postgres://openclaw@pg.internal:5432/openclawfs?sslmode=disable`
+- `META_PASSWORD=<postgres-password>`
+- `GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcp/openclaw-sa.json`
+- `JUICEFS_CACHE_DIR=/var/cache/juicefs/openclaw`
+- `JUICEFS_CACHE_SIZE=1024`
 
 ### Step 2 Local Secret File with Minimal Permission
 

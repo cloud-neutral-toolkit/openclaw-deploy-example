@@ -10,6 +10,24 @@ This document describes the recommended multi-gateway topology for a personal Op
 - Share long-lived memory and artifacts across nodes without sharing the full hot runtime state.
 - Centralize auth, secrets, rate limiting, and upstream AI API access behind Kong.
 
+## Architecture Principles
+
+- Share one remote Git repository for cross-gateway code exchange, but keep one local clone and one live working tree per gateway.
+- Do not synchronize full hot runtime state across gateways. `OPENCLAW_STATE_DIR`, browser state, locks, caches, and live workspace mutations stay node-local.
+- Synchronize shared semantic memory through `MemOS`, not through Git or object storage.
+- Use `MemOS-Cloud-OpenClaw-Plugin` as the lifecycle integration layer on each gateway: recall memory before execution, write memory back after execution.
+- Use `GCS` / `S3` / `OSS` for attachments, snapshots, exports, and recovery payloads, not as the primary semantic memory store.
+- When multiple Windows / macOS / Linux clients need one shared POSIX mount, prefer `JuiceFS` with self-hosted `PostgreSQL` metadata plus `GCS` object storage instead of direct `gcsfuse` or `rclone` bucket mounts.
+- Keep `Kong` as the unified ingress and control plane for auth, rate limits, routing, provider governance, and optional presigned URL issuance.
+
+In short:
+
+- `Git` = code and workspace sync
+- `MemOS` = semantic memory sync
+- `JuiceFS` = shared POSIX mount
+- object storage = artifact sync
+- `Kong` = ingress and control plane
+
 ## Domains and Node Roles
 
 | Domain | Node Role | Primary Purpose |
@@ -170,6 +188,7 @@ Multiple gateways may still synchronize workspace changes through Git's distribu
 
 [Shared Artifact Plane]
 - GCS / S3 / OSS stores attachments, exports, snapshots, and recovery payloads
+- optional shared mount for desktop/server nodes is provided by JuiceFS, backed by PostgreSQL metadata plus object storage
 - object storage may be accessed through direct URLs or Kong-issued presigned URLs
 - object storage is not the semantic memory engine
 
@@ -202,7 +221,7 @@ Multiple gateways may still synchronize workspace changes through Git's distribu
 - `OPENCLAW_CONFIG_PATH=$HOME/.openclaw/openclaw-local.json`
 - `OPENCLAW_STATE_DIR=$HOME/.openclaw/local-state`
 - workspace path: `$HOME/.openclaw/local-state/workspace`
-- optional shared mount: `/opt/data` for shared memory import or export, snapshots, and recovery workflows
+- optional shared mount: `/opt/data` backed by JuiceFS for shared memory import or export, snapshots, and recovery workflows
 
 ### VPS Remote Gateway
 
@@ -227,7 +246,7 @@ Use GCS/S3/OSS for shared memory and artifacts only:
 
 Prefer append-only or shard-based writes over direct multi-node overwrites of a single `data.json`.
 
-For macOS specifically, keep the live local gateway on local disk first and merge memory artifacts into shared storage on a schedule or at explicit sync points. Keep `scripts/macos_mount_gcs_openclaw.sh` as an optional mount path for `/opt/data`, but do not treat it as the default live state path for `openclaw-local.svc.plus`.
+For macOS specifically, keep the live local gateway on local disk first and merge memory artifacts into shared storage on a schedule or at explicit sync points. Use [JuiceFS + PostgreSQL + GCS](juicefs-gcs-mount.md) when `/opt/data` must be shared across Windows / macOS / Linux clients, but do not treat it as the default live state path for `openclaw-local.svc.plus`.
 
 ## Recommended Git Sync Flow
 

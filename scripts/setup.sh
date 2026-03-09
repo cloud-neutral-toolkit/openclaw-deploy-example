@@ -30,6 +30,8 @@ Examples:
   # VPS apply
   curl -fsSL https://raw.githubusercontent.com/cloud-neutral-toolkit/openclawbot.svc.plus/main/scripts/setup.sh \
     | bash -s -- --domain openclaw-vps.svc.plus --mode vps \
+      --meta-url "postgres://openclaw@127.0.0.1:5432/openclawfs?sslmode=disable" \
+      --meta-password "<pg-password>" \
       --gateway-token "<token>" --zai-api-key "<key>"
 
   # Cloud Run apply
@@ -49,7 +51,13 @@ Options:
                                           Deploy mode (default: vps)
   --dry-run                              Print actions only
 
-  --bucket <name>                        GCS bucket (default: openclawbot-data)
+  --bucket <name>                        JuiceFS object storage bucket on GCS (default: openclawbot-data)
+  --meta-url <url>                       JuiceFS metadata URL, typically PostgreSQL (required for vps/single-host)
+  --meta-password <value>                Optional JuiceFS META_PASSWORD written to env file
+  --juicefs-name <name>                  JuiceFS filesystem name used on first format (default: openclawfs)
+  --juicefs-cache-dir <path>             JuiceFS local cache dir (single-host default: /var/cache/juicefs/openclaw)
+  --juicefs-cache-size <MiB>             JuiceFS cache size in MiB (default: 1024)
+  --gcs-credentials <path>               GOOGLE_APPLICATION_CREDENTIALS path written to env file
   --state-dir <path>                     State dir mount path (mode default: vps/cloud-run=/data, macos-local=$HOME/.openclaw/local-state)
   --config-path <path>                   Config path (mode default: vps=/data/openclaw-vps.json, cloud-run=/data/openclaw-cloud-run.json, macos-local=$HOME/.openclaw/openclaw-local.json)
   --control-ui-origin <origin>           Allowed origin (single-host default: https://<domain>, cloud-run default: *)
@@ -110,6 +118,13 @@ run_shell() {
   bash -lc "$cmd"
 }
 
+run_shell_with_env_file() {
+  local cmd="$1"
+  local quoted_env_file
+  quoted_env_file="$(printf '%q' "$ENV_FILE")"
+  run_shell "set -a; [ -f ${quoted_env_file} ] && . ${quoted_env_file}; set +a; ${cmd}"
+}
+
 write_file() {
   local path="$1"
   local mode="$2"
@@ -142,17 +157,14 @@ ensure_apt_packages() {
   run_cmd apt-get install -y "$@"
 }
 
-ensure_gcsfuse() {
-  if command -v gcsfuse >/dev/null 2>&1; then
-    log "gcsfuse already installed"
+ensure_juicefs() {
+  if command -v juicefs >/dev/null 2>&1; then
+    log "juicefs already installed"
     return 0
   fi
-  log "installing gcsfuse"
-  ensure_apt_packages ca-certificates curl gnupg lsb-release
-  run_shell 'curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg'
-  run_shell 'CODENAME=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}"); echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt gcsfuse-${CODENAME} main" > /etc/apt/sources.list.d/gcsfuse.list'
-  APT_UPDATED=0
-  ensure_apt_packages gcsfuse
+  log "installing juicefs"
+  ensure_apt_packages ca-certificates curl
+  run_shell 'curl -sSL https://d.juicefs.com/install | bash -s -- /usr/local/bin'
 }
 
 ensure_caddy() {
@@ -341,17 +353,51 @@ validate_local_env_file() {
   fi
 }
 
+validate_single_host_env_file() {
+  validate_local_env_file
+  if ((DRY_RUN)); then
+    return 0
+  fi
+  grep -q '^JUICEFS_META_URL=' "$ENV_FILE" || die "missing JUICEFS_META_URL in ${ENV_FILE}"
+}
+
+ensure_single_host_juicefs_volume() {
+  if ((DRY_RUN)); then
+    run_shell_with_env_file 'juicefs status "$JUICEFS_META_URL" >/dev/null 2>&1 || juicefs format --storage gs --bucket "'"${GCS_BUCKET}"'" "$JUICEFS_META_URL" "'"${JUICEFS_NAME}"'"'
+    return 0
+  fi
+
+  if run_shell_with_env_file 'juicefs status "$JUICEFS_META_URL" >/dev/null 2>&1'; then
+    log "JuiceFS volume already formatted"
+    return 0
+  fi
+
+  log "formatting JuiceFS volume ${JUICEFS_NAME}"
+  run_shell_with_env_file 'juicefs format --storage gs --bucket "'"${GCS_BUCKET}"'" "$JUICEFS_META_URL" "'"${JUICEFS_NAME}"'"'
+}
+
 ensure_single_host_files() {
+  local juicefs_bin
+  juicefs_bin="$(command -v juicefs || true)"
+  if [[ -z "$juicefs_bin" ]]; then
+    juicefs_bin="/usr/local/bin/juicefs"
+  fi
+  local juicefs_writeback_flag=""
+  if ((JUICEFS_WRITEBACK)); then
+    juicefs_writeback_flag="--writeback"
+  fi
+
   write_file "$MOUNT_SERVICE_FILE" "0644" <<EOF
 [Unit]
-Description=Mount GCS bucket ${GCS_BUCKET} to ${STATE_DIR}
+Description=Mount OpenClaw JuiceFS (${JUICEFS_NAME}) to ${STATE_DIR}
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/gcsfuse --foreground --implicit-dirs --uid 0 --gid 0 --file-mode 0644 --dir-mode 0755 ${GCS_BUCKET} ${STATE_DIR}
-ExecStop=/bin/sh -c 'fusermount -u ${STATE_DIR} || fusermount3 -u ${STATE_DIR} || true'
+EnvironmentFile=${ENV_FILE}
+ExecStart=/bin/bash -lc 'exec ${juicefs_bin} mount --cache-dir "\${JUICEFS_CACHE_DIR}" --cache-size "\${JUICEFS_CACHE_SIZE}" ${juicefs_writeback_flag} "\${JUICEFS_META_URL}" "${STATE_DIR}"'
+ExecStop=/bin/bash -lc 'exec ${juicefs_bin} umount "${STATE_DIR}" || true'
 Restart=always
 RestartSec=5
 
@@ -445,20 +491,22 @@ EOF
 
 setup_single_host() {
   [[ "${EUID}" -eq 0 ]] || die "single-host mode must run as root"
+  [[ -n "$JUICEFS_META_URL_INPUT" ]] || die "--meta-url is required for vps/single-host mode"
   log "mode=single-host domain=${DOMAIN} bucket=${GCS_BUCKET} state=${STATE_DIR} config=${CONFIG_PATH}"
 
   ensure_apt_packages ca-certificates curl gnupg lsb-release jq fuse3
-  ensure_gcsfuse
+  ensure_juicefs
   ensure_caddy
   ensure_google_chrome
   ensure_openclaw
 
   run_cmd mkdir -p "$STATE_DIR"
-  run_cmd mkdir -p "${STATE_DIR}/workspace"
+  run_cmd mkdir -p "$JUICEFS_CACHE_DIR"
 
   if ((DRY_RUN)); then
     log "[dry-run] ensure ${ENV_FILE} exists and is mode 600"
   else
+    mkdir -p "$(dirname "$ENV_FILE")"
     touch "$ENV_FILE"
     chmod 600 "$ENV_FILE"
     chown root:root "$ENV_FILE"
@@ -466,14 +514,24 @@ setup_single_host() {
 
   upsert_env_var "$ENV_FILE" "OPENCLAW_GATEWAY_TOKEN" "$OPENCLAW_GATEWAY_TOKEN_INPUT"
   upsert_env_var "$ENV_FILE" "Z_AI_API_KEY" "$ZAI_API_KEY_INPUT"
+  upsert_env_var "$ENV_FILE" "JUICEFS_META_URL" "$JUICEFS_META_URL_INPUT"
+  upsert_env_var "$ENV_FILE" "META_PASSWORD" "$META_PASSWORD_INPUT"
+  upsert_env_var "$ENV_FILE" "GOOGLE_APPLICATION_CREDENTIALS" "$GOOGLE_APPLICATION_CREDENTIALS_INPUT"
+  upsert_env_var "$ENV_FILE" "GCS_BUCKET_NAME" "$GCS_BUCKET"
+  upsert_env_var "$ENV_FILE" "JUICEFS_NAME" "$JUICEFS_NAME"
+  upsert_env_var "$ENV_FILE" "JUICEFS_CACHE_DIR" "$JUICEFS_CACHE_DIR"
+  upsert_env_var "$ENV_FILE" "JUICEFS_CACHE_SIZE" "$JUICEFS_CACHE_SIZE"
 
-  ensure_single_host_config_json
   ensure_single_host_files
-  validate_local_env_file
+  validate_single_host_env_file
+  ensure_single_host_juicefs_volume
 
   run_cmd systemctl daemon-reload
   run_cmd systemctl enable --now openclawbot-data.mount.service
   run_cmd systemctl restart openclawbot-data.mount.service
+  run_cmd mkdir -p "$(dirname "$CONFIG_PATH")"
+  run_cmd mkdir -p "${STATE_DIR}/workspace"
+  ensure_single_host_config_json
   run_cmd systemctl enable --now openclawbot-svc-plus.service
   run_cmd systemctl restart openclawbot-svc-plus.service
   run_cmd systemctl enable --now caddy.service
@@ -664,6 +722,13 @@ GATEWAY_TOKEN_SECRET="internal-service-token"
 ZAI_SECRET_NAME="zai-api-key"
 OPENCLAW_GATEWAY_TOKEN_INPUT=""
 ZAI_API_KEY_INPUT=""
+JUICEFS_META_URL_INPUT="${JUICEFS_META_URL:-}"
+META_PASSWORD_INPUT="${META_PASSWORD:-}"
+GOOGLE_APPLICATION_CREDENTIALS_INPUT="${GOOGLE_APPLICATION_CREDENTIALS:-}"
+JUICEFS_NAME="${JUICEFS_NAME:-openclawfs}"
+JUICEFS_CACHE_DIR="${JUICEFS_CACHE_DIR:-/var/cache/juicefs/openclaw}"
+JUICEFS_CACHE_SIZE="${JUICEFS_CACHE_SIZE:-1024}"
+JUICEFS_WRITEBACK=1
 ACME_EMAIL=""
 CLOUD_RUN_IMAGE="ghcr.io/openclaw/openclaw:latest"
 CLOUD_RUN_IMAGE_EXPLICIT=0
@@ -706,6 +771,36 @@ while [[ $# -gt 0 ]]; do
     --bucket)
       [[ $# -ge 2 ]] || die "--bucket requires a value"
       GCS_BUCKET="$2"
+      shift 2
+      ;;
+    --meta-url)
+      [[ $# -ge 2 ]] || die "--meta-url requires a value"
+      JUICEFS_META_URL_INPUT="$2"
+      shift 2
+      ;;
+    --meta-password)
+      [[ $# -ge 2 ]] || die "--meta-password requires a value"
+      META_PASSWORD_INPUT="$2"
+      shift 2
+      ;;
+    --juicefs-name)
+      [[ $# -ge 2 ]] || die "--juicefs-name requires a value"
+      JUICEFS_NAME="$2"
+      shift 2
+      ;;
+    --juicefs-cache-dir)
+      [[ $# -ge 2 ]] || die "--juicefs-cache-dir requires a value"
+      JUICEFS_CACHE_DIR="$2"
+      shift 2
+      ;;
+    --juicefs-cache-size)
+      [[ $# -ge 2 ]] || die "--juicefs-cache-size requires a value"
+      JUICEFS_CACHE_SIZE="$2"
+      shift 2
+      ;;
+    --gcs-credentials)
+      [[ $# -ge 2 ]] || die "--gcs-credentials requires a value"
+      GOOGLE_APPLICATION_CREDENTIALS_INPUT="$2"
       shift 2
       ;;
     --state-dir)

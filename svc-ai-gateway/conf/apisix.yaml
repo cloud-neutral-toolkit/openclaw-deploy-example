@@ -1,0 +1,292 @@
+routes:
+  - id: chat-glm-5-cloud
+    name: chat-glm-5-cloud
+    priority: 100
+    hosts:
+      - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+    uri: /v1/chat/completions
+    methods:
+      - POST
+    vars:
+      - - post_arg.model
+        - ==
+        - glm-5:cloud
+    plugins:
+      ai-proxy:
+        provider: openai-compatible
+        auth:
+          header:
+            Authorization: "Bearer ${{GLM_API_KEY}}"
+        options:
+          model: "${{GLM_CHAT_MODEL:=glm-5}}"
+        override:
+          endpoint: "${{GLM_CHAT_ENDPOINT}}"
+        logging:
+          summaries: true
+    upstream:
+      type: roundrobin
+      nodes:
+        "127.0.0.1:1": 1
+
+  - id: chat-kimi-k2-5-cloud
+    name: chat-kimi-k2-5-cloud
+    priority: 100
+    hosts:
+      - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+    uri: /v1/chat/completions
+    methods:
+      - POST
+    vars:
+      - - post_arg.model
+        - ==
+        - kimi-k2.5:cloud
+    plugins:
+      ai-proxy:
+        provider: openai-compatible
+        auth:
+          header:
+            Authorization: "Bearer ${{KIMI_API_KEY}}"
+        options:
+          model: "${{KIMI_CHAT_MODEL:=kimi-k2.5}}"
+        override:
+          endpoint: "${{KIMI_CHAT_ENDPOINT}}"
+        logging:
+          summaries: true
+    upstream:
+      type: roundrobin
+      nodes:
+        "127.0.0.1:1": 1
+
+  - id: chat-minimax-m2-5-cloud
+    name: chat-minimax-m2-5-cloud
+    priority: 100
+    hosts:
+      - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+    uri: /v1/chat/completions
+    methods:
+      - POST
+    vars:
+      - - post_arg.model
+        - ==
+        - minimax-m2.5:cloud
+    plugins:
+      ai-proxy:
+        provider: openai-compatible
+        auth:
+          header:
+            Authorization: "Bearer ${{MINIMAX_API_KEY}}"
+        options:
+          model: "${{MINIMAX_CHAT_MODEL:=minimax-m2.5}}"
+        override:
+          endpoint: "${{MINIMAX_CHAT_ENDPOINT}}"
+        logging:
+          summaries: true
+    upstream:
+      type: roundrobin
+      nodes:
+        "127.0.0.1:1": 1
+
+  - id: chat-default-cloud
+    name: chat-default-cloud
+    priority: 90
+    hosts:
+      - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+    uri: /v1/chat/completions
+    methods:
+      - POST
+    vars:
+      - - post_arg.model
+        - ==
+        - chat-default:cloud
+    plugins:
+      ai-proxy-multi:
+        fallback_strategy:
+          - http_429
+          - http_5xx
+          - rate_limiting
+        instances:
+          - name: glm-primary
+            provider: openai-compatible
+            weight: 0
+            priority: 30
+            auth:
+              header:
+                Authorization: "Bearer ${{GLM_API_KEY}}"
+            options:
+              model: "${{GLM_CHAT_MODEL:=glm-5}}"
+            override:
+              endpoint: "${{GLM_CHAT_ENDPOINT}}"
+          - name: kimi-fallback
+            provider: openai-compatible
+            weight: 0
+            priority: 20
+            auth:
+              header:
+                Authorization: "Bearer ${{KIMI_API_KEY}}"
+            options:
+              model: "${{KIMI_CHAT_MODEL:=kimi-k2.5}}"
+            override:
+              endpoint: "${{KIMI_CHAT_ENDPOINT}}"
+          - name: minimax-fallback
+            provider: openai-compatible
+            weight: 0
+            priority: 10
+            auth:
+              header:
+                Authorization: "Bearer ${{MINIMAX_API_KEY}}"
+            options:
+              model: "${{MINIMAX_CHAT_MODEL:=minimax-m2.5}}"
+            override:
+              endpoint: "${{MINIMAX_CHAT_ENDPOINT}}"
+        logging:
+          summaries: true
+    upstream:
+      type: roundrobin
+      nodes:
+        "127.0.0.1:1": 1
+
+  - id: chat-unsupported-model
+    name: chat-unsupported-model
+    priority: 1
+    hosts:
+      - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+    uri: /v1/chat/completions
+    methods:
+      - POST
+    plugins:
+      serverless-pre-function:
+        phase: access
+        functions:
+          - |
+            return function()
+              local core = require("apisix.core")
+              return core.response.exit(400, {
+                error = {
+                  message = "Unsupported chat model alias. Use glm-5:cloud, kimi-k2.5:cloud, minimax-m2.5:cloud, or chat-default:cloud.",
+                  type = "invalid_request_error",
+                  param = "model",
+                  code = "model_not_found"
+                }
+              })
+            end
+    upstream:
+      type: roundrobin
+      nodes:
+        "127.0.0.1:1": 1
+
+  - id: embeddings-default-cloud
+    name: embeddings-default-cloud
+    priority: 100
+    hosts:
+      - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+    uri: /v1/embeddings
+    methods:
+      - POST
+    vars:
+      - - post_arg.model
+        - ==
+        - text-embedding-3-small:cloud
+    plugins:
+      ai-proxy:
+        provider: openai-compatible
+        auth:
+          header:
+            Authorization: "Bearer ${{EMBEDDINGS_API_KEY}}"
+        options:
+          model: "${{EMBEDDINGS_MODEL:=text-embedding-3-small}}"
+        override:
+          endpoint: "${{EMBEDDINGS_ENDPOINT}}"
+        logging:
+          summaries: true
+    upstream:
+      type: roundrobin
+      nodes:
+        "127.0.0.1:1": 1
+
+  - id: embeddings-unsupported-model
+    name: embeddings-unsupported-model
+    priority: 1
+    hosts:
+      - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+    uri: /v1/embeddings
+    methods:
+      - POST
+    plugins:
+      serverless-pre-function:
+        phase: access
+        functions:
+          - |
+            return function()
+              local core = require("apisix.core")
+              return core.response.exit(400, {
+                error = {
+                  message = "Unsupported embedding model alias. Use text-embedding-3-small:cloud.",
+                  type = "invalid_request_error",
+                  param = "model",
+                  code = "model_not_found"
+                }
+              })
+            end
+    upstream:
+      type: roundrobin
+      nodes:
+        "127.0.0.1:1": 1
+
+  - id: models-catalog
+    name: models-catalog
+    priority: 100
+    hosts:
+      - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+    uri: /v1/models
+    methods:
+      - GET
+    plugins:
+      serverless-pre-function:
+        phase: access
+        functions:
+          - |
+            return function()
+              local core = require("apisix.core")
+              return core.response.exit(200, {
+                object = "list",
+                data = {
+                  {
+                    id = "glm-5:cloud",
+                    object = "model",
+                    owned_by = "svc-ai-gateway",
+                    root = "glm-5:cloud"
+                  },
+                  {
+                    id = "kimi-k2.5:cloud",
+                    object = "model",
+                    owned_by = "svc-ai-gateway",
+                    root = "kimi-k2.5:cloud"
+                  },
+                  {
+                    id = "minimax-m2.5:cloud",
+                    object = "model",
+                    owned_by = "svc-ai-gateway",
+                    root = "minimax-m2.5:cloud"
+                  },
+                  {
+                    id = "chat-default:cloud",
+                    object = "model",
+                    owned_by = "svc-ai-gateway",
+                    root = "chat-default:cloud"
+                  },
+                  {
+                    id = "text-embedding-3-small:cloud",
+                    object = "model",
+                    owned_by = "svc-ai-gateway",
+                    root = "text-embedding-3-small:cloud"
+                  }
+                }
+              }, {
+                ["Content-Type"] = "application/json"
+              })
+            end
+    upstream:
+      type: roundrobin
+      nodes:
+        "127.0.0.1:1": 1
+#END

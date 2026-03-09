@@ -1,13 +1,18 @@
 # Cloud Run 部署指南
 
-本文档说明如何将 OpenClawBot 部署到 Google Cloud Run，并配置 GCS 持久化存储。
+本文档说明如何将 OpenClawBot 部署到 Google Cloud Run，并配置默认的 GCS volume 持久化存储。
 
 ## 架构概述
 
 - **多阶段构建**: Dockerfile 使用 builder 和 runtime 两个阶段，优化镜像大小
-- **GCS 卷挂载**: 使用 GCS Fuse 将 Cloud Storage bucket 挂载到 `/data` 目录
+- **GCS 卷挂载**: Cloud Run 默认继续使用 GCS volume 挂载到 `/data`
 - **端口配置**: 自动读取 Cloud Run 的 `PORT` 环境变量（默认 8080）
 - **健康检查**: 使用 TCP 探针检查 WebSocket 服务可用性
+
+说明：
+
+- Cloud Run 这一路保持现有 GCS volume 默认实现。
+- Windows / macOS / Linux 客户端如果需要共享挂载，请改用 `JuiceFS + PostgreSQL + GCS`，不要复用 Cloud Run 的挂载思路。
 
 ## 前置条件
 
