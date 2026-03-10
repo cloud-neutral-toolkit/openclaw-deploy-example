@@ -1,3 +1,4 @@
 .env
 deploy/apisix/example/vps/.env
 deploy/apisix/macos/.env.local
+deploy/caddy/macos/.env.local

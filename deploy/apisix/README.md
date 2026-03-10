@@ -70,6 +70,8 @@ Useful actions:
 ./scripts/run-local-macos.sh smoke
 ```
 
+If you want a TLS edge on macOS as well, use the separate local Caddy profile under `deploy/caddy/macos/`.
+
 ## Config sync
 
 Compare local shared config against the online deployment:

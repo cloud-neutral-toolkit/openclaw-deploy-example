@@ -1,6 +1,9 @@
 apisix:
   node_listen:
     - 9080
+  dns_resolver:
+    - 1.1.1.1
+    - 8.8.8.8
   enable_admin: false
   enable_control: false
   router:

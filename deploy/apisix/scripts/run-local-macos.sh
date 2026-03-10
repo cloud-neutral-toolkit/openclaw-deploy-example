@@ -53,8 +53,8 @@ load_env() {
   source "$ENV_FILE"
   set +a
 
-  export API_PUBLIC_HOST="127.0.0.1"
-  export LOCAL_API_HOST="127.0.0.1"
+  export API_PUBLIC_HOST="${API_PUBLIC_HOST:-api.svc.plus}"
+  export LOCAL_API_HOST="${LOCAL_API_HOST:-127.0.0.1}"
   export APISIX_PROFILE
   export PATH="${OPENRESTY_PREFIX}/bin:${OPENRESTY_PREFIX}/nginx/sbin:${PATH}"
 }

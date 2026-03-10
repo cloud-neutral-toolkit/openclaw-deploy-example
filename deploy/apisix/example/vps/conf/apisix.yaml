@@ -10,6 +10,7 @@ routes:
     priority: 100
     hosts:
       - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+      - "${{LOCAL_API_HOST:=127.0.0.1}}"
     uri: /v1/chat/completions
     methods:
       - POST
@@ -61,6 +62,7 @@ routes:
     priority: 100
     hosts:
       - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+      - "${{LOCAL_API_HOST:=127.0.0.1}}"
     uri: /v1/chat/completions
     methods:
       - POST
@@ -93,6 +95,7 @@ routes:
     priority: 100
     hosts:
       - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+      - "${{LOCAL_API_HOST:=127.0.0.1}}"
     uri: /v1/chat/completions
     methods:
       - POST
@@ -125,6 +128,7 @@ routes:
     priority: 1
     hosts:
       - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+      - "${{LOCAL_API_HOST:=127.0.0.1}}"
     uri: /v1/chat/completions
     methods:
       - POST
@@ -157,6 +161,7 @@ routes:
     priority: 100
     hosts:
       - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+      - "${{LOCAL_API_HOST:=127.0.0.1}}"
     uri: /v1/embeddings
     methods:
       - POST
@@ -189,6 +194,7 @@ routes:
     priority: 1
     hosts:
       - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+      - "${{LOCAL_API_HOST:=127.0.0.1}}"
     uri: /v1/embeddings
     methods:
       - POST
@@ -221,6 +227,7 @@ routes:
     priority: 100
     hosts:
       - "${{API_PUBLIC_HOST:=api.svc.plus}}"
+      - "${{LOCAL_API_HOST:=127.0.0.1}}"
     uri: /v1/models
     methods:
       - GET

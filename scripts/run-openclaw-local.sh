@@ -69,6 +69,7 @@ ensure_config() {
     },
     "controlUi": {
       "allowedOrigins": [
+        "https://openclaw.svc.plus",
         "http://127.0.0.1:${PORT}",
         "http://localhost:${PORT}"
       ]
@@ -91,6 +92,7 @@ EOF
     .gateway.auth.mode = "token" |
     .gateway.controlUi = (.gateway.controlUi // {}) |
     .gateway.controlUi.allowedOrigins = [
+      "https://openclaw.svc.plus",
       ("http://127.0.0.1:" + ($port | tostring)),
       ("http://localhost:" + ($port | tostring))
     ]
