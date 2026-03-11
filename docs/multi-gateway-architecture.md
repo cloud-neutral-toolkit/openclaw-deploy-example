@@ -248,6 +248,13 @@ Prefer append-only or shard-based writes over direct multi-node overwrites of a 
 
 For macOS specifically, keep the live local gateway on local disk first and merge memory artifacts into shared storage on a schedule or at explicit sync points. Use [JuiceFS + PostgreSQL + GCS](juicefs-gcs-mount.md) when `/opt/data` must be shared across Windows / macOS / Linux clients, but do not treat it as the default live state path for `openclaw-local.svc.plus`.
 
+For current storage choices, there are two recommended paths:
+
+- 2-node `macOS + VPS` deployments should prefer Syncthing for `sessions` / `workspace` / shared `memory` files, with node-local SQLite. See [OpenClaw Syncthing Sync Plan](syncthing-sync-plan.md).
+- 3+ active nodes or team collaboration should prefer PostgreSQL as the `memory` backend while still keeping `workspace` on Git boundaries. See [OpenClaw 多节点存储场景矩阵](storage-sync-scenarios.md).
+
+When Syncthing is used between macOS and VPS, do not point it at the entire `/opt/data` tree. Restrict synchronization to explicit shared folders such as `sessions`, `workspace`, and `memory`, and keep browser state, logs, credentials, and other hot runtime data node-local. PostgreSQL in this design only addresses distributed `memory` consistency; it does not make the whole OpenClaw runtime safe for shared multi-writer operation.
+
 ## Recommended Git Sync Flow
 
 Use Git to synchronize code and workspace outputs across gateways, but only at task boundaries.
